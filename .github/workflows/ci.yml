@@ -40,9 +40,32 @@ jobs:
           path: build/screenshot-*.png
           if-no-files-found: warn
 
+  windows-window:
+    name: Окно на настоящей Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Модульные тесты
+        run: npm test
+      # у windows-раннера есть сессия рабочего стола, поэтому окно запускается как есть
+      - name: Окно Electron
+        run: npm run test:ui
+      - name: Скриншоты окна
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-windows
+          path: build/screenshot-*.png
+          if-no-files-found: warn
+
   build:
     name: Сборка ${{ matrix.label }}
-    needs: tests
+    needs: [tests, windows-window]
     strategy:
       fail-fast: false
       matrix:
