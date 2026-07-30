@@ -85,7 +85,7 @@ function launch() {
   if (!(calcValue >= 5 && calcValue <= 15)) fail(`2d6+3 дал ${calcValue}, ожидалось 5…15`);
   else log('калькулятор посчитал 2d6+3', String(calcValue));
 
-  await win.screenshot({ path: path.join(ROOT, 'build', 'screenshot-node.png') });
+  await win.screenshot({ path: path.join(ROOT, 'build', 'screenshot-1-node.png') });
 
   await app.close();
   log('программа закрыта');
@@ -111,7 +111,7 @@ function launch() {
   await win.click('.panel summary:has-text("Связанные директории")');
   log('связей в панели', String(await win.locator('.link-row').count() || links));
 
-  await win.screenshot({ path: path.join(ROOT, 'build', 'screenshot-menu.png') });
+  await win.screenshot({ path: path.join(ROOT, 'build', 'screenshot-2-after-restart.png') });
 
   /* --- данные лежат обычными файлами ------------------------------------- */
 
