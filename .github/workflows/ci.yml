@@ -1,0 +1,75 @@
+name: Проверки и сборка
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: Тесты и настоящее окно
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - name: Модульные тесты (парсер и хранилище)
+        run: npm test
+
+      - name: Браузеры для прогонов
+        run: npx playwright install --with-deps chromium
+
+      - name: Экраны поверх файлового хранилища
+        run: npm run test:renderer
+
+      # На машине без графической оболочки Electron не запускается: нужен GTK.
+      # Здесь он есть, поэтому проверяем настоящее окно программы.
+      - name: Окно Electron
+        run: xvfb-run -a --server-args="-screen 0 1400x900x24" npm run test:ui
+
+      - name: Скриншоты окна
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: build/screenshot-*.png
+          if-no-files-found: warn
+
+  build:
+    name: Сборка ${{ matrix.label }}
+    needs: tests
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: Windows
+            command: npm run dist:win
+            artifacts: dist/*.exe
+          - os: ubuntu-latest
+            label: Linux
+            command: npm run dist:linux
+            artifacts: dist/*.AppImage
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Собрать
+        run: ${{ matrix.command }}
+        env:
+          # без подписи: сертификата нет, установщик будет неподписанным
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: journeyman-${{ matrix.label }}
+          path: ${{ matrix.artifacts }}
+          if-no-files-found: error

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Journeyman — кодекс мастера</title>
+<meta name="description" content="Хранилище материалов для мастеров настольных ролевых игр: пространства, связанные объекты, тексты, изображения и музыка.">
+<!-- Ничего не грузим из сети: программа обязана работать без интернета.
+     Заодно запрет на внешние источники отсекает подгрузку чего-либо
+     из текста, вставленного пользователем. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 30 10v12L16 30 2 22V10z' fill='%23161009' stroke='%23c9a227' stroke-width='2'/%3E%3Cpath d='M16 9l6 3.5v7L16 23l-6-3.5v-7z' fill='%23c9a227'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<div id="app" aria-live="polite"></div>
+
+<!-- ─── Модальное окно ─────────────────────────────────────────── -->
+<div id="modal-root" class="modal-root" hidden></div>
+
+<!-- ─── Всплывающие уведомления ────────────────────────────────── -->
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+<!-- ─── Скрытые поля загрузки ──────────────────────────────────── -->
+<input type="file" id="file-input" hidden>
+
+<script src="js/db.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/app.js"></script>
+<script src="js/screens/menu.js"></script>
+<script src="js/screens/space.js"></script>
+<script src="js/screens/node.js"></script>
+</body>
+</html>

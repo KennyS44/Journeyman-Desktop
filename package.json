@@ -1,0 +1,70 @@
+{
+  "name": "journeyman-desktop",
+  "productName": "Journeyman",
+  "version": "0.1.0",
+  "description": "Кодекс мастера настольных ролевых игр — настольная программа, работает без интернета и без браузера",
+  "author": "KennyS44",
+  "license": "MIT",
+  "private": true,
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node tests/calc.test.js && node tests/storage.test.js",
+    "test:ui": "node tests/app.smoke.js",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "test:renderer": "node tests/renderer.smoke.js"
+  },
+  "devDependencies": {
+    "electron": "^43.2.0",
+    "electron-builder": "^25.1.8",
+    "playwright": "^1.49.0"
+  },
+  "build": {
+    "appId": "ru.kennys44.journeyman",
+    "productName": "Journeyman",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Journeyman"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Office"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.productivity"
+    }
+  }
+}
