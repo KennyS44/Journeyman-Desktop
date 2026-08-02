@@ -235,7 +235,11 @@ const NODE = (() => {
     function addCol(cell) {
       const idx = [...cell.parentElement.children].indexOf(cell);
       for (const tr of cell.closest('table').rows) {
-        const head = tr.parentElement.tagName === 'THEAD';
+        // Тип новой ячейки берём у соседей по строке, а не по <thead>: шапка
+        // бывает и просто первой строкой из <th> — так приходит разметка
+        // извне, вставленная из буфера или собранная не этим редактором.
+        const sample = tr.children[idx] || tr.children[tr.children.length - 1];
+        const head = sample ? sample.tagName === 'TH' : tr.parentElement.tagName === 'THEAD';
         const c = document.createElement(head ? 'th' : 'td');
         c.innerHTML = head ? 'Столбец' : '<br>';
         if (tr.children[idx]) tr.children[idx].after(c); else tr.append(c);
