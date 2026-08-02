@@ -6,6 +6,27 @@ const MENU = (() => {
   const { el, icon, toast, formDialog, confirmDialog, fmtDate, plural } = UI;
   const { root, go, route, topbar } = APP;
 
+  /** Весь кодекс одним файлом: копия на чёрный день и переезд между машинами. */
+  function backupSection(hasSpaces) {
+    return el('section', { class: 'backup' }, [
+      el('h2', { text: 'Кодекс целиком' }),
+      el('p', { text: 'Один файл со всеми пространствами, текстами, изображениями и музыкой. '
+        + 'Пригодится как копия на чёрный день и чтобы перенести материалы на другой компьютер '
+        + 'или в настольную версию. Загруженное встаёт рядом с тем, что уже есть.' }),
+      el('div', { class: 'backup-actions' }, [
+        el('button', {
+          class: 'btn', disabled: !hasSpaces,
+          title: hasSpaces ? 'Сохранить весь кодекс в файл' : 'Пока нечего сохранять',
+          onclick: () => BACKUP.exportAll(),
+        }, [icon('download', 18), el('span', { text: 'Сохранить в файл' })]),
+        el('button', {
+          class: 'btn',
+          onclick: async () => { if (await BACKUP.importFile()) route(); },
+        }, [icon('upload', 18), el('span', { text: 'Загрузить из файла' })]),
+      ]),
+    ]);
+  }
+
   async function render() {
     document.title = 'Journeyman — кодекс мастера';
     const spaces = await DB.listSpaces();
@@ -69,6 +90,7 @@ const MENU = (() => {
             ])
           : null,
         grid,
+        backupSection(spaces.length > 0),
       ]),
     );
   }

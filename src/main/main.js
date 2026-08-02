@@ -74,6 +74,17 @@ function buildMenu() {
       label: 'Файл',
       submenu: [
         {
+          label: 'Сохранить кодекс в файл…',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => win && win.webContents.send('command', 'export'),
+        },
+        {
+          label: 'Загрузить кодекс из файла…',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => win && win.webContents.send('command', 'import'),
+        },
+        { type: 'separator' },
+        {
           label: 'Показать папку с данными',
           click: () => shell.openPath(storage.dataDir),
         },
@@ -155,6 +166,20 @@ function wireStorage() {
   ipcMain.handle('db', (_event, method, args) => {
     if (!EXPOSED.includes(method)) throw new Error(`Неизвестный метод хранилища: ${method}`);
     return storage[method](...args);
+  });
+
+  // Сохранение кодекса наружу. Renderer не имеет доступа к диску, поэтому
+  // и диалог, и запись делаются здесь. Путь выбирает пользователь — это
+  // единственное место, где программа пишет за пределы своей папки.
+  ipcMain.handle('saveFile', async (_event, name, bytes) => {
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: 'Сохранить кодекс',
+      defaultPath: path.join(app.getPath('documents'), name),
+      filters: [{ name: 'Кодекс Journeyman', extensions: ['zip'] }],
+    });
+    if (canceled || !filePath) return { ok: false };
+    await fs.promises.writeFile(filePath, Buffer.from(bytes));
+    return { ok: true, path: filePath };
   });
 }
 

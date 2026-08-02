@@ -46,6 +46,7 @@ const UI = (() => {
     scroll:  '<path d="M6 4h10a2 2 0 0 1 2 2v12a2 2 0 0 0 2 2H8a2 2 0 0 1-2-2z"/><path d="M9 8h6M9 12h6"/>',
     pencil:  '<path d="M4 20h4l10-10-4-4L4 16z"/><path d="m14 6 4 4"/>',
     download:'<path d="M12 4v11"/><path d="m8 11 4 4 4-4"/><path d="M5 19h14"/>',
+    upload:  '<path d="M12 15V4"/><path d="m8 8 4-4 4 4"/><path d="M5 19h14"/>',
     play:    '<path d="M8 5v14l11-7z"/>',
     table:   '<rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M3 10h18M3 14.5h18M9 5v14M15 5v14"/>',
     calc:    '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/>',
@@ -264,6 +265,57 @@ const UI = (() => {
     });
   }
 
+  const TRANSLIT = {
+    а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i',
+    й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't',
+    у: 'u', ф: 'f', х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '',
+    э: 'e', ю: 'yu', я: 'ya',
+  };
+
+  /**
+   * Имя для скачивания в браузере: только латиница и цифры.
+   * Кириллицу в атрибуте download часть браузеров теряет целиком — файл
+   * приходит безымянным и без расширения. Проверено: имя «Кодекс.jm.zip»
+   * сохраняется как «download».
+   */
+  function asciiName(name) {
+    const out = Array.from(name).map((ch) => {
+      if (ch.charCodeAt(0) >= 0x20 && ch.charCodeAt(0) <= 0x7e) return ch;
+      const low = ch.toLowerCase();
+      const t = TRANSLIT[low];
+      if (t === undefined) return '-';
+      return ch === low ? t : t.charAt(0).toUpperCase() + t.slice(1);
+    }).join('');
+    return out.replace(/-{2,}/g, '-').replace(/\s{2,}/g, ' ').replace(/^[-\s.]+/, '').trim()
+      || 'journeyman.jm.zip';
+  }
+
+  /**
+   * Отдать пользователю готовый файл. Возвращает false, если он передумал.
+   *
+   * В настольной версии сохранением занимается мост: там системный диалог и
+   * запись на диск. В браузере — обычная ссылка на скачивание. Развилка стоит
+   * здесь, а не в двух разных копиях файла, чтобы ui.js оставался дословно
+   * одинаковым в обеих версиях: в браузере моста просто нет.
+   */
+  async function saveFile(name, blob) {
+    const bridge = window.journeyman;
+    if (bridge && bridge.saveFile) {
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      const res = await bridge.saveFile(name, bytes);
+      return !!(res && res.ok);
+    }
+    const url = URL.createObjectURL(blob);
+    const a = el('a', { href: url, download: asciiName(name) });
+    document.body.append(a);
+    a.click();
+    // ни ссылку, ни адрес нельзя убирать сразу: браузер ещё не начал читать
+    // содержимое, а у выброшенной из документа ссылки теряется имя файла —
+    // сохранённое приходит с именем «download»
+    setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 30000);
+    return true;
+  }
+
   /* --- временные ссылки на Blob ------------------------------------------ */
 
   const urls = new Set();
@@ -300,6 +352,6 @@ const UI = (() => {
   };
 
   return { el, icon, toast, openModal, formDialog, confirmDialog, chooseDialog, closeModal,
-           lightbox, pickFiles, blobUrl, releaseUrls, sanitizeHtml, textToHtml,
+           lightbox, pickFiles, saveFile, blobUrl, releaseUrls, sanitizeHtml, textToHtml,
            fmtDate, fmtSize, plural, debounce };
 })();

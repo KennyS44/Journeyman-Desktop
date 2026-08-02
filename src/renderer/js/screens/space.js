@@ -77,6 +77,7 @@ const SPACE = (() => {
         sub: space.description || 'пространство',
         back: { title: 'К списку пространств', onclick: () => go('#/') },
         actions: [
+          el('button', { class: 'btn btn-ghost btn-icon', title: 'Сохранить пространство в файл', onclick: () => BACKUP.exportSpace(spaceId) }, [icon('download')]),
           el('button', { class: 'btn btn-ghost btn-icon', title: 'Переименовать пространство', onclick: renameSpace }, [icon('pencil')]),
           el('button', { class: 'btn btn-ghost btn-icon', title: 'В меню', onclick: () => go('#/') }, [icon('home')]),
         ],

@@ -31,6 +31,7 @@ const expect = (name, actual, wanted) =>
 
 (async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jm-renderer-'));
+  const exportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jm-export-'));
   let store = createStorage(dataDir);
 
   const browser = await launchChromium();
@@ -51,8 +52,22 @@ const expect = (name, actual, wanted) =>
     if (result && result.bytes) return { ...result, __bytes: Buffer.from(result.bytes).toString('base64') };
     return result === undefined ? null : result;
   });
+  // то же, что делает ipcMain.handle('saveFile'): диалог здесь не нужен,
+  // путь задан заранее — проверяется, что наружу уезжают верные байты
+  let savedFile = null;
+  await ctx.exposeFunction('__jmSave', (name, base64) => {
+    savedFile = { name, path: path.join(exportDir, 'codex.zip') };
+    fs.writeFileSync(savedFile.path, Buffer.from(base64, 'base64'));
+    return { ok: true, path: savedFile.path };
+  });
+
   await ctx.addInitScript(() => {
     window.journeyman = {
+      saveFile: (name, bytes) => {
+        let bin = '';
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        return window.__jmSave(name, btoa(bin));
+      },
       db: async (method, ...args) => {
         const packed = args.map((a) => (a && a.bytes
           ? { ...a, bytes: undefined, __bytes: btoa(String.fromCharCode(...a.bytes)) }
@@ -167,8 +182,61 @@ const expect = (name, actual, wanted) =>
   expect('в db.json два объекта', Object.keys(dbJson.nodes).length, 2);
   expect('в папке assets один файл', fs.readdirSync(path.join(dataDir, 'assets')).length, 1);
 
+  /* --- перенос кодекса в другую копию программы --------------------------- */
+
+  // Главное, ради чего затевался экспорт: материалы должны переезжать между
+  // машинами. Здесь это вторая папка данных — как чистая установка на другом
+  // компьютере, куда мастер приносит один файл.
+
+  await page2.click('.backup-actions .btn >> nth=0');
+  await page2.waitForFunction(() => document.querySelector('.toast'), null, { timeout: 15000 });
+  await page2.waitForTimeout(500);
+  if (!savedFile) bad('кодекс сохранён в файл', 'мост saveFile не вызвался');
+  else {
+    ok('кодекс сохранён в файл', savedFile.name);
+    expect('имя файла с расширением .jm.zip', /\.jm\.zip$/.test(savedFile.name), true);
+  }
+
+  const before = {
+    spaces: store.listSpaces().length,
+    nodes: Object.keys(JSON.parse(fs.readFileSync(path.join(dataDir, 'db.json'), 'utf8')).nodes).length,
+    assets: fs.readdirSync(path.join(dataDir, 'assets')).length,
+  };
+
+  const freshDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jm-fresh-'));
+  store = createStorage(freshDir);                   // чистая установка программы
+  await page2.close();
+  const page3 = await ctx.newPage();
+  await page3.goto(url + '#/');
+  await page3.waitForSelector('.backup', { timeout: 15000 });
+  expect('на новом месте пусто', await page3.locator('.space-card:not(.new)').count(), 0);
+
+  await page3.click('.backup-actions .btn >> nth=1');
+  await page3.setInputFiles('#file-input', savedFile.path);
+  await page3.waitForSelector('.modal:has-text("Загрузить кодекс?")', { timeout: 15000 });
+  await page3.click('.modal .btn-primary');
+  await page3.waitForSelector('.space-card:not(.new)', { timeout: 20000 });
+
+  expect('пространство переехало', store.listSpaces().length, before.spaces);
+  const freshDb = JSON.parse(fs.readFileSync(path.join(freshDir, 'db.json'), 'utf8'));
+  expect('объекты переехали', Object.keys(freshDb.nodes).length, before.nodes);
+  expect('связь переехала', Object.keys(freshDb.links).length, 1);
+  expect('файлы переехали', fs.readdirSync(path.join(freshDir, 'assets')).length, before.assets);
+
+  const movedNode = Object.values(freshDb.nodes).find((n) => n.text && n.text.includes('гильдии'));
+  expect('текст объекта переехал дословно',
+    movedNode && movedNode.text, 'Хозяин должен гильдии 200 зм.');
+
+  // содержимое файла, а не только его наличие
+  const movedAsset = Object.values(freshDb.assets || {})[0];
+  const movedBytes = fs.readFileSync(path.join(freshDir, 'assets', fs.readdirSync(path.join(freshDir, 'assets'))[0]));
+  expect('содержимое файла совпало по размеру', movedBytes.length, 16);
+  expect('имя файла сохранилось', movedAsset ? movedAsset.name : null, 'карта.png');
+
   await browser.close();
   fs.rmSync(dataDir, { recursive: true, force: true });
+  fs.rmSync(freshDir, { recursive: true, force: true });
+  fs.rmSync(exportDir, { recursive: true, force: true });
 
   if (errors.length) { console.log('\n  ОШИБКИ В КОНСОЛИ:\n   ' + errors.join('\n   ')); failed.push('консоль'); }
   else console.log('\n  ошибок в консоли нет');
