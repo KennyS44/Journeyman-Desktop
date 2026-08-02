@@ -185,6 +185,28 @@ const expect = (name, actual, wanted) =>
   await page2.waitForSelector('.space-grid');
   expect('пространство на месте', await page2.locator('.space-card:not(.new)').count(), 1);
 
+  /* --- громкость: один уровень на всё, переживает перезапуск -------------- */
+
+  // Уровень лежит в localStorage, а не в db.json: это настройка слушателя, а
+  // не материал кампании. Здесь проверяется именно то, что специфично для
+  // настольной версии, — что хранилище работает на странице file://.
+  const volSet = await page2.evaluate(() => {
+    const a = UI.bindVolume(document.createElement('audio'));
+    document.body.append(a);
+    a.volume = 0.42;
+    return a.volume;
+  });
+  expect('уровень принят проигрывателем', Math.round(volSet * 100), 42);
+  await page2.waitForTimeout(500);            // отложенная запись
+
+  await page2.goto(url + '#/');               // как будто программу открыли заново
+  await page2.waitForSelector('.space-grid');
+  const volBack = await page2.evaluate(() => {
+    const a = UI.bindVolume(document.createElement('audio'));
+    return a.volume;
+  });
+  expect('уровень пережил перезапуск на file://', Math.round(volBack * 100), 42);
+
   /* --- данные — обычные файлы --------------------------------------------- */
 
   const dbJson = JSON.parse(fs.readFileSync(path.join(dataDir, 'db.json'), 'utf8'));

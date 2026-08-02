@@ -5,7 +5,7 @@
 
 const NODE = (() => {
   const { el, icon, toast, formDialog, confirmDialog, chooseDialog, lightbox, pickFiles,
-          blobUrl, sanitizeHtml, textToHtml, fmtDate, fmtSize, plural, debounce } = UI;
+          blobUrl, sanitizeHtml, textToHtml, bindVolume, fmtDate, fmtSize, plural, debounce } = UI;
   const { root, go, topbar, clamp, playTrack, setTeardown } = APP;
 
   /* ======================================================================
@@ -484,7 +484,7 @@ const NODE = (() => {
                   },
                 }, [icon('trash', 16)]),
               ]),
-              el('audio', { src: url, controls: true, preload: 'none' }),
+              bindVolume(el('audio', { src: url, controls: true, preload: 'none' })),
             ]);
           }))
         : el('div', { class: 'panel-empty', text: 'Тишина. Загрузи эмбиент или боевую тему.' });

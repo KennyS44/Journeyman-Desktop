@@ -351,7 +351,61 @@ const UI = (() => {
     return wrapped;
   };
 
+  /* --- громкость звука ----------------------------------------------------
+     Уровень один на всё приложение: мини-плеер живёт поверх экранов, а на
+     объекте у каждой записи свой <audio>. Без общего уровня громкость
+     сбрасывалась бы на полную при каждом переходе и перезапуске — ползунок
+     пришлось бы двигать заново посреди игры.
+     ------------------------------------------------------------------------ */
+
+  const VOLUME_KEY = 'jm.volume';
+  const sound = { level: 1, muted: false };
+
+  try {
+    const raw = localStorage.getItem(VOLUME_KEY);
+    if (raw) {
+      const v = JSON.parse(raw);
+      if (Number.isFinite(v.level)) sound.level = Math.min(1, Math.max(0, v.level));
+      sound.muted = !!v.muted;
+    }
+  } catch (_) {}                       // запрет хранилища — просто полная громкость
+
+  const saveVolume = debounce(() => {
+    try { localStorage.setItem(VOLUME_KEY, JSON.stringify(sound)); } catch (_) {}
+  }, 300);
+
+  // живые проигрыватели: за ними следим, чтобы уровень не разъезжался в
+  // пределах одного экрана
+  const players = new Set();
+  let applying = false;                // защита от эха: применение шлёт volumechange
+
+  function spreadVolume(source) {
+    applying = true;
+    for (const a of [...players]) {
+      if (!a.isConnected) { players.delete(a); continue; }   // элемент уже выброшен из документа
+      if (a === source) continue;
+      a.volume = sound.level;
+      a.muted = sound.muted;
+    }
+    applying = false;
+  }
+
+  /** Ставит проигрывателю общий уровень и следит за ползунком. */
+  function bindVolume(audio) {
+    audio.volume = sound.level;
+    audio.muted = sound.muted;
+    players.add(audio);
+    audio.addEventListener('volumechange', () => {
+      if (applying) return;
+      sound.level = audio.volume;
+      sound.muted = audio.muted;
+      saveVolume();
+      spreadVolume(audio);
+    });
+    return audio;
+  }
+
   return { el, icon, toast, openModal, formDialog, confirmDialog, chooseDialog, closeModal,
            lightbox, pickFiles, saveFile, blobUrl, releaseUrls, sanitizeHtml, textToHtml,
-           fmtDate, fmtSize, plural, debounce };
+           bindVolume, fmtDate, fmtSize, plural, debounce };
 })();

@@ -8,7 +8,7 @@
    ========================================================================== */
 
 const APP = (() => {
-  const { el, icon, toast, releaseUrls } = UI;
+  const { el, icon, toast, releaseUrls, bindVolume } = UI;
 
   const root = document.getElementById('app');
 
@@ -54,7 +54,7 @@ const APP = (() => {
     if (player.url) URL.revokeObjectURL(player.url);
     player.url = URL.createObjectURL(asset.blob);
     if (!player.bar) {
-      player.audio = el('audio', { controls: true, autoplay: true });
+      player.audio = bindVolume(el('audio', { controls: true, autoplay: true }));
       player.bar = el('div', { class: 'player' }, [
         el('span', { class: 'pl-name' }),
         player.audio,
