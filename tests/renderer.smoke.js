@@ -171,6 +171,16 @@ const expect = (name, actual, wanted) =>
   await page2.click('.panel summary:has-text("Изображения и видео")');
   expect('картинка на месте после перезапуска', await page2.locator('.gallery-item').count(), 1);
 
+  // Дождаться, пока миниатюра действительно догрузится. В галерее стоит
+  // loading="lazy", а уход с экрана отзывает все blob:-ссылки (APP.route →
+  // releaseUrls). Уйти раньше, чем картинка загрузилась, — значит оборвать
+  // загрузку на полпути и получить в консоли «Not allowed to load local
+  // resource». Пользователь так не успевает, а прогон успевает.
+  await page2.waitForFunction(() => {
+    const img = document.querySelector('.gallery-item img');
+    return img && img.complete;
+  }, null, { timeout: 10000 });
+
   await page2.goto(url + '#/');
   await page2.waitForSelector('.space-grid');
   expect('пространство на месте', await page2.locator('.space-card:not(.new)').count(), 1);
