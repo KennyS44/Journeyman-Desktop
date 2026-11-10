@@ -60,6 +60,7 @@ const BACKUP = (() => {
         id: space.id, name: space.name, description: space.description || '',
         scratch: space.scratch || '',
         biome: space.biome || '',
+        map: space.map || null,
         createdAt: space.createdAt, updatedAt: space.updatedAt,
         nodes: packed,
         links: links.map((l) => ({ id: l.id, a: l.a, b: l.b, label: l.label || '', createdAt: l.createdAt })),
@@ -199,6 +200,12 @@ const BACKUP = (() => {
         // здесь, иначе загруженный кодекс отличался бы от исходного
         if (n.html != null) patch.html = remapHtml(n.html, assetMap);
         await DB.updateNode(node.id, patch);
+      }
+
+      // зоны карты ссылаются на страны — идентификаторы у них теперь новые
+      if (s.map && s.map.data) {
+        const zones = (s.map.zones || []).map((id) => nodeMap.get(id) || null);
+        await DB.updateSpace(space.id, { map: { ...s.map, zones } });
       }
 
       for (const l of s.links || []) {

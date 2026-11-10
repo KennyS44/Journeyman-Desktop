@@ -326,6 +326,32 @@ textarea.field { resize: vertical; }
 .map-layer { position: absolute; pointer-events: none; animation: fade 400ms var(--ease); }
 .canvas-viewport.has-map { background-image: none; transition: background-color 400ms var(--ease); }
 .has-map .wire { opacity: .9; stroke-width: 3; }
+.map-zones { position: absolute; pointer-events: none; opacity: .9; }
+.canvas-viewport.mode-paint { cursor: crosshair; }
+
+/* панель кисти: сверху, листается вбок на узком экране */
+.paint-bar {
+  position: absolute;
+  left: 50%; top: 16px;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(20,16,12,.94);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-2);
+}
+.paint-tools { display: flex; align-items: center; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.paint-bar .sep { width: 1px; height: 24px; background: var(--line); flex: none; margin: 0 4px; }
+.paint-tool { flex: none; border-radius: 999px; border-color: transparent; white-space: nowrap; min-height: 44px; }
+.paint-swatch { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); flex: none; }
+.map-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 
 .wires { position: absolute; overflow: visible; left: 0; top: 0; width: 1px; height: 1px; pointer-events: none; }
 .wire-hit { stroke: transparent; stroke-width: 22; fill: none; pointer-events: stroke; cursor: pointer; }

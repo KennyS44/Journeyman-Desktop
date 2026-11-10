@@ -57,6 +57,8 @@ const UI = (() => {
     castle:  '<path d="M4 20V9h3V6h2v3h2V6h2v3h2V6h2v3h3v11z"/><path d="M10 20v-4a2 2 0 0 1 4 0v4"/>',
     cave:    '<path d="M3 20 8 8l4-4 4 4 5 12z"/><path d="M9 20v-3a3 3 0 0 1 6 0v3"/>',
     person:  '<circle cx="12" cy="7" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+    hand:    '<path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M11 10V4.5a1.5 1.5 0 0 1 3 0V11"/><path d="M14 10.5V6a1.5 1.5 0 0 1 3 0v6"/><path d="M17 11a1.5 1.5 0 0 1 3 0v3a7 7 0 0 1-7 7h-1a6 6 0 0 1-5-2.7L4 15a1.5 1.5 0 0 1 2.5-1.7L8 15"/>',
+    brush:   '<path d="M20 4 10 14"/><path d="M10 14a3 3 0 0 0-4 1c-1 2-1 4-3 5 3 0 6 0 8-2a3 3 0 0 0-1-4z"/>',
     banner:  '<path d="M6 3v18"/><path d="M6 4h12l-3 4.5 3 4.5H6"/>',
   };
 

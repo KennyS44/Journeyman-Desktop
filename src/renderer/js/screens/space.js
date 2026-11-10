@@ -39,13 +39,15 @@ const SPACE = (() => {
 
     const world = el('div', { class: 'canvas-world' });
     const mapLayer = el('canvas', { class: 'map-layer', hidden: true });
+    const zonesLayer = el('canvas', { class: 'map-zones', hidden: true });     // зоны поверх карты в режиме правки
     const svgNS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(svgNS, 'svg');
     svg.setAttribute('class', 'wires');
-    world.append(mapLayer, svg);
+    world.append(mapLayer, zonesLayer, svg);
 
     const viewport = el('div', { class: 'canvas-viewport' }, [world]);
     const banner = el('div', { class: 'link-banner', hidden: true });
+    const paintBar = el('div', { class: 'paint-bar', hidden: true });
     const zoomLabel = el('span', { class: 'zoom-label' });
 
     const btnAdd = el('button', { class: 'btn btn-primary', onclick: () => addNode() },
@@ -73,7 +75,7 @@ const SPACE = (() => {
       ]),
     ]);
 
-    viewport.append(banner, toolbar, hint);
+    viewport.append(banner, paintBar, toolbar, hint);
 
     root.replaceChildren(
       topbar({
@@ -109,6 +111,15 @@ const SPACE = (() => {
     function drawWires() {
       const byId = new Map(nodes.map((n) => [n.id, n]));
       svg.replaceChildren();
+      const biome = map && MAP.biomeOf(space.biome);
+      if (biome) {
+        for (const n of nodes) {
+          if (!MAP.isGeo(n.type)) continue;
+          const c = nodeCenter(n);
+          const g = MAP.decor({ id: n.id, type: n.type, x: c.x, y: c.y }, biome);
+          if (g) svg.append(g);
+        }
+      }
       for (const l of links) {
         const a = byId.get(l.a), b = byId.get(l.b);
         if (!a || !b) continue;
@@ -158,31 +169,59 @@ const SPACE = (() => {
       for (const n of nodes) world.append(await nodeCard(n));
       hint.hidden = nodes.length > 0;
       drawWires();
-      drawMap();
     }
 
     /* --- карта под холстом --------------------------------------------- */
 
+    // Карта хранится в пространстве и от положения карточек не зависит.
+    // Строится по объектам один раз — при первом выборе биома или по кнопке
+    // «Перестроить», дальше меняется только кистью.
+    let map = MAP.decode(space.map);
+
+    const mapItems = () => nodes.map((n) => {
+      const c = nodeCenter(n);
+      return { id: n.id, type: n.type || '', x: c.x, y: c.y };
+    });
+
+    async function saveMap() {
+      space.map = MAP.encode(map);
+      await DB.updateSpace(space.id, { map: space.map });
+    }
+
     async function drawMap() {
       const biome = MAP.biomeOf(space.biome);
       btnMap.classList.toggle('is-active', !!biome);
-      if (!biome || !nodes.length) {
+      if (biome && !map && nodes.length) {
+        map = MAP.generate(mapItems(), space.id, biome.key);
+        await saveMap();
+      }
+      drawWires();
+      if (!biome || !map) {
         mapLayer.hidden = true;
         viewport.classList.remove('has-map');
         viewport.style.backgroundColor = '';
         return;
       }
-      const items = nodes.map((n) => {
-        const c = nodeCenter(n);
-        return { id: n.id, type: n.type || '', x: c.x, y: c.y, w: NODE_W, h: nodeEls.get(n.id)?.offsetHeight || 200 };
-      });
-      const box = await MAP.draw(mapLayer, { biome: biome.key, seed: space.id, items });
+      const box = await MAP.draw(mapLayer, { biome: biome.key, map });
       if (!box) return;                                 // успела начаться новая отрисовка
       Object.assign(mapLayer.style, { left: box.x + 'px', top: box.y + 'px', width: box.w + 'px', height: box.h + 'px' });
       mapLayer.hidden = false;
       viewport.classList.add('has-map');
-      // за краем карты — то же море (или суша, если стран и городов нет)
-      viewport.style.backgroundColor = items.some((it) => MAP.isGeo(it.type)) ? biome.deep : biome.low;
+      viewport.style.backgroundColor = biome.deep;       // за краем карты — то же море
+    }
+
+    async function rebuildMap() {
+      const ok = await confirmDialog({
+        title: 'Перестроить карту?',
+        description: 'Суша и границы заново разложатся по нынешним странам, городам и местам. Всё, что нарисовано кистью, пропадёт.',
+        confirm: 'Перестроить',
+      });
+      if (!ok) return;
+      map = MAP.generate(mapItems(), space.id, space.biome);
+      if (!map) return toast('Сначала добавь объекты', 'err');
+      await saveMap();
+      if (paint) { renderPaintBar(); drawZonesLayer(); }
+      drawMap();
     }
 
     async function chooseBiome() {
@@ -197,23 +236,120 @@ const SPACE = (() => {
           }),
           el('span', { text: b ? b.label : 'Без карты' }),
         ]);
+        const hasMap = !!MAP.biomeOf(space.biome);
         box.append(
           el('h2', { text: 'Карта' }),
-          el('p', { text: 'Карта строится из объектов с классами «Страна», «Город» и «Место»: страны делят сушу границами, вокруг городов встают стены. Выбери, как выглядит этот мир.' }),
+          el('p', { text: 'Первый раз карта раскладывается по объектам с классами «Страна», «Город» и «Место». Дальше она сохраняется: перемещение карточек её не меняет, а границы и берега правятся кистью.' }),
           el('div', { class: 'biome-grid' }, [...MAP.BIOMES.map(option), option(null)]),
+          hasMap ? el('div', { class: 'map-actions' }, [
+            el('button', { class: 'btn btn-primary', onclick: () => done('@edit') }, [icon('brush', 18), el('span', { text: 'Править границы' })]),
+            el('button', { class: 'btn', onclick: () => done('@rebuild') }, [icon('center', 18), el('span', { text: 'Перестроить по объектам' })]),
+          ]) : null,
           el('div', { class: 'modal-actions' }, [
             el('button', { class: 'btn btn-ghost', onclick: () => done(null), text: 'Отмена' }),
           ]),
         );
       });
       if (pick === null || pick === undefined) return;
+      if (pick === '@edit') return startPaint();
+      if (pick === '@rebuild') return rebuildMap();
       space.biome = pick;
       await DB.updateSpace(space.id, { biome: pick });
-      drawMap();
-      if (pick && !nodes.some((n) => MAP.isGeo(n.type))) {
+      if (!pick && paint) stopPaint();
+      await drawMap();
+      if (pick && !nodes.some((n) => MAP.isGeo(n.type)) && !space.map) {
         toast('Дай объектам классы «Страна», «Город» или «Место» — по ним появится суша');
       }
     }
+
+    /* --- правка карты кистью ------------------------------------------- */
+
+    const BRUSHES = [{ r: 40, label: 'Кисть S' }, { r: 90, label: 'Кисть M' }, { r: 180, label: 'Кисть L' }];
+    let paint = null;            // { tool: 'hand' | 'sea' | 'land' | id страны, size }
+    let stroke = null;
+
+    function drawZonesLayer() {
+      const box = MAP.drawZones(zonesLayer, map);
+      Object.assign(zonesLayer.style, { left: box.x + 'px', top: box.y + 'px', width: box.w + 'px', height: box.h + 'px' });
+    }
+
+    function renderPaintBar() {
+      const biome = MAP.biomeOf(space.biome);
+      const byId = new Map(nodes.map((n) => [n.id, n]));
+      const tools = [
+        { key: 'hand', label: 'Рука', icon: 'hand' },
+        { key: 'sea', label: 'Море', swatch: biome.deep },
+        { key: 'land', label: 'Суша', swatch: biome.low },
+        ...map.zones.map((id) => ({ key: id, label: byId.get(id)?.name || 'Ничья зона', swatch: MAP.tintOf(map, id) })),
+        ...nodes.filter((n) => n.type === 'country' && !map.zones.includes(n.id))
+          .map((n) => ({ key: n.id, label: n.name, swatch: MAP.tintOf(map, n.id) })),
+      ];
+      const list = el('div', { class: 'paint-tools' }, [
+        ...tools.map((t) => el('button', {
+          class: 'btn paint-tool' + (paint.tool === t.key ? ' is-active' : ''),
+          title: t.key === 'hand' ? 'Двигать холст' : 'Рисовать: ' + t.label,
+          onclick: () => { paint.tool = t.key; renderPaintBar(); },
+        }, [
+          t.icon ? icon(t.icon, 18) : el('span', { class: 'paint-swatch', style: { background: t.swatch } }),
+          el('span', { text: t.label }),
+        ])),
+        el('span', { class: 'sep' }),
+        el('button', {
+          class: 'btn paint-tool', title: 'Размер кисти',
+          onclick: () => { paint.size = (paint.size + 1) % BRUSHES.length; renderPaintBar(); },
+        }, [icon('brush', 18), el('span', { text: BRUSHES[paint.size].label })]),
+      ]);
+      // «Готово» всегда на виду, даже когда инструменты листаются вбок
+      paintBar.replaceChildren(list,
+        el('button', { class: 'btn btn-primary paint-tool', onclick: () => stopPaint() }, [el('span', { text: 'Готово' })]));
+    }
+
+    function startPaint() {
+      if (!MAP.biomeOf(space.biome)) return;
+      if (!map) {
+        const c = viewCenterWorld();
+        map = MAP.blank(c.x - 1200, c.y - 1200, c.x + 1200, c.y + 1200, space.id);
+      }
+      if (linkMode) setLinkMode(false);
+      const firstCountry = map.zones[0] || nodes.find((n) => n.type === 'country')?.id;
+      paint = { tool: firstCountry || 'land', size: 1 };
+      viewport.classList.add('mode-paint');
+      drawZonesLayer();
+      zonesLayer.hidden = false;
+      paintBar.hidden = false;
+      renderPaintBar();
+    }
+
+    function stopPaint() {
+      paint = null;
+      stroke = null;
+      viewport.classList.remove('mode-paint');
+      zonesLayer.hidden = true;
+      paintBar.hidden = true;
+      flushMap();
+    }
+
+    function toWorld(e) {
+      const r = viewport.getBoundingClientRect();
+      return { x: (e.clientX - r.left - cam.x) / cam.scale, y: (e.clientY - r.top - cam.y) / cam.scale };
+    }
+
+    /** Мазок от точки a до точки b. */
+    function dab(a, b) {
+      const zones = map.zones.length;
+      const value = paint.tool === 'sea' ? MAP.SEA : paint.tool === 'land' ? MAP.LAND : MAP.zoneValue(map, paint.tool);
+      const r = BRUSHES[paint.size].r;
+      const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / (r / 3)));
+      for (let i = 1; i <= steps; i++) {
+        MAP.paint(map, a.x + ((b.x - a.x) * i) / steps, a.y + ((b.y - a.y) * i) / steps, r, value);
+      }
+      drawZonesLayer();
+      if (map.zones.length !== zones) renderPaintBar();
+    }
+
+    const redrawMap = debounce(() => drawMap(), 350);
+    const persistMap = debounce(() => saveMap(), 400);
+    function flushMap() { persistMap(); redrawMap(); }
 
     async function nodeCard(n) {
       const box = el('div', {
@@ -295,7 +431,6 @@ const SPACE = (() => {
         if (!moved) return;
         lastDragEnd = performance.now();
         await DB.updateNode(n.id, { x: n.x, y: n.y });
-        drawMap();
       };
       box.addEventListener('pointerup', end);
       box.addEventListener('pointercancel', end);
@@ -304,6 +439,7 @@ const SPACE = (() => {
     /* --- инструмент связи --------------------------------------------- */
 
     function setLinkMode(on) {
+      if (on && paint) stopPaint();
       linkMode = on;
       linkSource = null;
       btnLink.classList.toggle('is-active', on);
@@ -346,6 +482,7 @@ const SPACE = (() => {
 
     const onKey = (e) => {
       if (e.key === 'Escape' && linkMode) { setLinkMode(false); }
+      else if (e.key === 'Escape' && paint && !document.querySelector('.modal')) { stopPaint(); }
     };
     document.addEventListener('keydown', onKey);
 
@@ -356,13 +493,19 @@ const SPACE = (() => {
     let pinchStart = null;
 
     viewport.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.toolbar') || e.target.closest('.node')) return;
+      if (e.target.closest('.toolbar') || e.target.closest('.node') || e.target.closest('.paint-bar')) return;
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pointers.size === 1) {
+      if (pointers.size === 1 && paint && paint.tool !== 'hand') {
+        const p = toWorld(e);
+        stroke = { last: p };
+        dab(p, p);
+        viewport.setPointerCapture(e.pointerId);
+      } else if (pointers.size === 1) {
         panStart = { px: e.clientX, py: e.clientY, cx: cam.x, cy: cam.y };
         viewport.classList.add('is-panning');
         viewport.setPointerCapture(e.pointerId);
       } else if (pointers.size === 2) {
+        if (stroke) { stroke = null; flushMap(); }      // второй палец — значит, двигаем холст
         panStart = null;
         const [p1, p2] = [...pointers.values()];
         pinchStart = { dist: Math.hypot(p1.x - p2.x, p1.y - p2.y), scale: cam.scale,
@@ -373,7 +516,11 @@ const SPACE = (() => {
     viewport.addEventListener('pointermove', (e) => {
       if (!pointers.has(e.pointerId)) return;
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pinchStart && pointers.size === 2) {
+      if (stroke && pointers.size === 1) {
+        const p = toWorld(e);
+        dab(stroke.last, p);
+        stroke.last = p;
+      } else if (pinchStart && pointers.size === 2) {
         const [p1, p2] = [...pointers.values()];
         const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
         const next = clamp(pinchStart.scale * (dist / pinchStart.dist), MIN_SCALE, MAX_SCALE);
@@ -395,6 +542,7 @@ const SPACE = (() => {
       pointers.delete(e.pointerId);
       if (pointers.size < 2) pinchStart = null;
       if (pointers.size === 0) { panStart = null; viewport.classList.remove('is-panning'); }
+      if (stroke && pointers.size === 0) { stroke = null; flushMap(); }
     };
     viewport.addEventListener('pointerup', endPan);
     viewport.addEventListener('pointercancel', endPan);
@@ -546,6 +694,7 @@ const SPACE = (() => {
     await drawNodes();
     applyCam();
     if (!cam.touched && nodes.length) { fitAll(); }
+    drawMap();
 
     setTeardown(() => { document.removeEventListener('keydown', onKey); });
   }
