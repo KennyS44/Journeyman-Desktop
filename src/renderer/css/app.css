@@ -322,6 +322,11 @@ textarea.field { resize: vertical; }
   transform-origin: 0 0;
 }
 
+/* карта под холстом: строится из объектов, см. js/map.js */
+.map-layer { position: absolute; pointer-events: none; animation: fade 400ms var(--ease); }
+.canvas-viewport.has-map { background-image: none; transition: background-color 400ms var(--ease); }
+.has-map .wire { opacity: .9; stroke-width: 3; }
+
 .wires { position: absolute; overflow: visible; left: 0; top: 0; width: 1px; height: 1px; pointer-events: none; }
 .wire-hit { stroke: transparent; stroke-width: 22; fill: none; pointer-events: stroke; cursor: pointer; }
 .wire {
@@ -420,6 +425,29 @@ textarea.field { resize: vertical; }
   transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 .node-tools button:hover { color: var(--gold-bright); border-color: var(--gold); }
+
+/* класс объекта: метка на обложке и цветная кромка карточки */
+.node-class {
+  position: absolute;
+  top: 100px; left: 8px;           /* нижний угол обложки: верхний занят кнопками */
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(13,10,7,.85);
+  color: var(--cls, var(--ink-dim));
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: none;
+}
+.node[data-type] { border-top: 4px solid var(--cls); }
+.node[data-type="country"]   { --cls: #e8c85a; }
+.node[data-type="city"]      { --cls: #e6a77a; }
+.node[data-type="place"]     { --cls: #9cc7e8; }
+.node[data-type="character"] { --cls: #b8d99a; }
+.node[data-type="faction"]   { --cls: #d7a6e8; }
+.node[data-type="note"]      { --cls: #c2b298; }
 
 /* панель инструментов холста */
 .toolbar {
@@ -864,6 +892,32 @@ textarea.field { resize: vertical; }
 .calc-hist .ch-val { color: var(--gold); font-variant-numeric: lining-nums tabular-nums; }
 
 /* --- список вариантов в окне --------------------------------------------- */
+
+/* выбор биома карты */
+.biome-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.biome {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-deep);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease);
+}
+.biome:hover { border-color: var(--gold); }
+.biome.is-current { border-color: var(--gold-bright); box-shadow: 0 0 0 2px rgba(232,200,90,.25); }
+.biome-swatch {
+  flex: none;
+  width: 32px; height: 32px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: repeating-linear-gradient(45deg, var(--panel-2) 0 4px, var(--bg-deep) 4px 8px);
+}
 
 .choice-list { display: flex; flex-direction: column; gap: 4px; }
 .choice { justify-content: flex-start; text-align: left; }

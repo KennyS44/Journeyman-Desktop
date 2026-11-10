@@ -4,7 +4,7 @@
    ========================================================================== */
 
 const SPACE = (() => {
-  const { el, icon, toast, formDialog, confirmDialog, pickFiles, blobUrl, debounce } = UI;
+  const { el, icon, toast, openModal, formDialog, confirmDialog, pickFiles, blobUrl, debounce } = UI;
   const { root, go, route, topbar, clamp, setTeardown } = APP;
 
   const NODE_W = 176;          // ширина карточки объекта, см. .node в CSS
@@ -38,10 +38,11 @@ const SPACE = (() => {
     let selectedLink = null;
 
     const world = el('div', { class: 'canvas-world' });
+    const mapLayer = el('canvas', { class: 'map-layer', hidden: true });
     const svgNS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(svgNS, 'svg');
     svg.setAttribute('class', 'wires');
-    world.append(svg);
+    world.append(mapLayer, svg);
 
     const viewport = el('div', { class: 'canvas-viewport' }, [world]);
     const banner = el('div', { class: 'link-banner', hidden: true });
@@ -51,10 +52,13 @@ const SPACE = (() => {
       [icon('plus'), el('span', { class: 'lbl', text: 'Объект' })]);
     const btnLink = el('button', { class: 'btn', title: 'Инструмент связи', onclick: () => setLinkMode(!linkMode) },
       [icon('link'), el('span', { class: 'lbl', text: 'Связь' })]);
+    const btnMap = el('button', { class: 'btn', title: 'Карта под холстом', onclick: () => chooseBiome() },
+      [icon('map'), el('span', { class: 'lbl', text: 'Карта' })]);
 
     const toolbar = el('div', { class: 'toolbar' }, [
       btnAdd,
       btnLink,
+      btnMap,
       el('span', { class: 'sep' }),
       el('button', { class: 'btn btn-icon', title: 'Отдалить', onclick: () => zoomBy(1 / 1.2) }, [icon('minus')]),
       zoomLabel,
@@ -154,6 +158,61 @@ const SPACE = (() => {
       for (const n of nodes) world.append(await nodeCard(n));
       hint.hidden = nodes.length > 0;
       drawWires();
+      drawMap();
+    }
+
+    /* --- карта под холстом --------------------------------------------- */
+
+    async function drawMap() {
+      const biome = MAP.biomeOf(space.biome);
+      btnMap.classList.toggle('is-active', !!biome);
+      if (!biome || !nodes.length) {
+        mapLayer.hidden = true;
+        viewport.classList.remove('has-map');
+        viewport.style.backgroundColor = '';
+        return;
+      }
+      const items = nodes.map((n) => {
+        const c = nodeCenter(n);
+        return { id: n.id, type: n.type || '', x: c.x, y: c.y, w: NODE_W, h: nodeEls.get(n.id)?.offsetHeight || 200 };
+      });
+      const box = await MAP.draw(mapLayer, { biome: biome.key, seed: space.id, items });
+      if (!box) return;                                 // успела начаться новая отрисовка
+      Object.assign(mapLayer.style, { left: box.x + 'px', top: box.y + 'px', width: box.w + 'px', height: box.h + 'px' });
+      mapLayer.hidden = false;
+      viewport.classList.add('has-map');
+      // за краем карты — то же море (или суша, если стран и городов нет)
+      viewport.style.backgroundColor = items.some((it) => MAP.isGeo(it.type)) ? biome.deep : biome.low;
+    }
+
+    async function chooseBiome() {
+      const pick = await openModal((box, done) => {
+        const option = (b) => el('button', {
+          class: 'biome' + ((space.biome || '') === (b ? b.key : '') ? ' is-current' : ''),
+          onclick: () => done(b ? b.key : ''),
+        }, [
+          el('span', {
+            class: 'biome-swatch',
+            style: b ? { background: `linear-gradient(135deg, ${b.deep} 0 30%, ${b.low} 30% 70%, ${b.high} 70%)` } : {},
+          }),
+          el('span', { text: b ? b.label : 'Без карты' }),
+        ]);
+        box.append(
+          el('h2', { text: 'Карта' }),
+          el('p', { text: 'Карта строится из объектов с классами «Страна», «Город» и «Место»: страны делят сушу границами, вокруг городов встают стены. Выбери, как выглядит этот мир.' }),
+          el('div', { class: 'biome-grid' }, [...MAP.BIOMES.map(option), option(null)]),
+          el('div', { class: 'modal-actions' }, [
+            el('button', { class: 'btn btn-ghost', onclick: () => done(null), text: 'Отмена' }),
+          ]),
+        );
+      });
+      if (pick === null || pick === undefined) return;
+      space.biome = pick;
+      await DB.updateSpace(space.id, { biome: pick });
+      drawMap();
+      if (pick && !nodes.some((n) => MAP.isGeo(n.type))) {
+        toast('Дай объектам классы «Страна», «Город» или «Место» — по ним появится суша');
+      }
     }
 
     async function nodeCard(n) {
@@ -178,14 +237,17 @@ const SPACE = (() => {
         go('#/n/' + n.id);
       };
 
+      const cls = MAP.classOf(n.type);
+      if (cls) box.dataset.type = cls.key;
       box.append(
         thumb,
+        ...(cls ? [el('span', { class: 'node-class' }, [icon(cls.icon, 14), el('span', { text: cls.label })])] : []),
         // в режиме связи выбор делает обработчик pointerdown — здесь только открытие
         el('button', { class: 'node-name', text: n.name, onclick: (e) => { e.stopPropagation(); if (!linkMode) open(); } }),
         el('span', { class: 'node-open-hint', text: linkMode ? 'нажми, чтобы связать' : 'открыть' }),
         el('div', { class: 'node-tools' }, [
           el('button', { title: 'Изображение объекта', onclick: async (e) => { e.stopPropagation(); await setCover(n); } }, [icon('image', 16)]),
-          el('button', { title: 'Переименовать', onclick: async (e) => { e.stopPropagation(); await renameNode(n); } }, [icon('pencil', 16)]),
+          el('button', { title: 'Название и класс', onclick: async (e) => { e.stopPropagation(); await editNode(n); } }, [icon('pencil', 16)]),
           el('button', { title: 'Удалить объект', onclick: async (e) => { e.stopPropagation(); await removeNode(n); } }, [icon('trash', 16)]),
         ]),
       );
@@ -233,6 +295,7 @@ const SPACE = (() => {
         if (!moved) return;
         lastDragEnd = performance.now();
         await DB.updateNode(n.id, { x: n.x, y: n.y });
+        drawMap();
       };
       box.addEventListener('pointerup', end);
       box.addEventListener('pointercancel', end);
@@ -408,29 +471,36 @@ const SPACE = (() => {
 
     /* --- действия над объектами ---------------------------------------- */
 
+    const classField = (value) => ({
+      key: 'type', label: 'Класс', type: 'select', value: value || '',
+      options: [{ value: '', label: 'Без класса' }, ...MAP.CLASSES.map((c) => ({ value: c.key, label: c.label }))],
+    });
+
     async function addNode() {
       const v = await formDialog({
         title: 'Новый ключевой объект',
         description: 'Персонаж, локация, артефакт, событие — всё, к чему захочется вернуться.',
-        fields: [{ key: 'name', label: 'Наименование', placeholder: 'Таверна «Спящий великан»' }],
+        fields: [{ key: 'name', label: 'Наименование', placeholder: 'Таверна «Спящий великан»' }, classField('')],
         submit: 'Добавить',
       });
       if (!v) return;
       const spot = freeSpot();
-      const n = await DB.createNode(spaceId, v.name, spot.x, spot.y);
+      let n = await DB.createNode(spaceId, v.name, spot.x, spot.y);
+      if (v.type) n = await DB.updateNode(n.id, { type: v.type });
       nodes.push(n);
       await drawNodes();
       toast('Объект добавлен');
     }
 
-    async function renameNode(n) {
+    async function editNode(n) {
       const v = await formDialog({
-        title: 'Переименовать объект',
-        fields: [{ key: 'name', label: 'Наименование', value: n.name }],
+        title: 'Объект',
+        fields: [{ key: 'name', label: 'Наименование', value: n.name }, classField(n.type)],
       });
       if (!v) return;
       n.name = v.name;
-      await DB.updateNode(n.id, { name: v.name });
+      n.type = v.type;
+      await DB.updateNode(n.id, { name: v.name, type: v.type });
       await drawNodes();
     }
 

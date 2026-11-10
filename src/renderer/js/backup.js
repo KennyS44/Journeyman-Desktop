@@ -46,7 +46,7 @@ const BACKUP = (() => {
           meta.push({ id: a.id, kind: a.kind, name: a.name, mime: a.mime, size: a.size, file: path });
         }
         packed.push({
-          id: node.id, name: node.name, x: node.x, y: node.y,
+          id: node.id, name: node.name, type: node.type || '', x: node.x, y: node.y,
           coverId: node.coverId || null,
           html: node.html != null ? node.html : null,
           text: node.text || '',
@@ -59,6 +59,7 @@ const BACKUP = (() => {
       out.push({
         id: space.id, name: space.name, description: space.description || '',
         scratch: space.scratch || '',
+        biome: space.biome || '',
         createdAt: space.createdAt, updatedAt: space.updatedAt,
         nodes: packed,
         links: links.map((l) => ({ id: l.id, a: l.a, b: l.b, label: l.label || '', createdAt: l.createdAt })),
@@ -166,6 +167,7 @@ const BACKUP = (() => {
     for (const s of codex.spaces) {
       const space = await DB.createSpace(s.name || 'Без названия', s.description || '');
       if (s.scratch) await DB.updateSpace(space.id, { scratch: s.scratch });
+      if (s.biome) await DB.updateSpace(space.id, { biome: s.biome });
       stat.spaces++;
 
       const nodeMap = new Map();
@@ -192,6 +194,7 @@ const BACKUP = (() => {
           notes: Array.isArray(n.notes) ? n.notes : [],
           coverId: (n.coverId && assetMap.get(n.coverId)) || null,
         };
+        if (n.type) patch.type = n.type;
         // у объекта без разметки поля html не было вовсе — не заводим его и
         // здесь, иначе загруженный кодекс отличался бы от исходного
         if (n.html != null) patch.html = remapHtml(n.html, assetMap);

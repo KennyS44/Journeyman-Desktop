@@ -52,6 +52,12 @@ const UI = (() => {
     calc:    '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/>',
     list:    '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>',
     panelL:  '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M10 4v16"/>',
+    map:     '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>',
+    crown:   '<path d="M4 18h16"/><path d="M4 15 3 7l5 4 4-6 4 6 5-4-1 8z"/>',
+    castle:  '<path d="M4 20V9h3V6h2v3h2V6h2v3h2V6h2v3h3v11z"/><path d="M10 20v-4a2 2 0 0 1 4 0v4"/>',
+    cave:    '<path d="M3 20 8 8l4-4 4 4 5 12z"/><path d="M9 20v-3a3 3 0 0 1 6 0v3"/>',
+    person:  '<circle cx="12" cy="7" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+    banner:  '<path d="M6 3v18"/><path d="M6 4h12l-3 4.5 3 4.5H6"/>',
   };
 
   function icon(name, size = 20) {
@@ -112,7 +118,7 @@ const UI = (() => {
     });
   }
 
-  /** Диалог с полями. fields: [{key,label,value,placeholder,type:'text'|'textarea'}] */
+  /** Диалог с полями. fields: [{key,label,value,placeholder,type:'text'|'textarea'|'select',options}] */
   function formDialog({ title, description, fields = [], submit = 'Сохранить' }) {
     return openModal((box, done) => {
       const inputs = {};
@@ -121,7 +127,9 @@ const UI = (() => {
         const id = 'f_' + f.key;
         const input = f.type === 'textarea'
           ? el('textarea', { class: 'field', id, rows: 3, placeholder: f.placeholder || '' })
-          : el('input', { class: 'field', id, type: 'text', placeholder: f.placeholder || '' });
+          : f.type === 'select'
+            ? el('select', { class: 'field', id }, f.options.map((o) => el('option', { value: o.value, text: o.label })))
+            : el('input', { class: 'field', id, type: 'text', placeholder: f.placeholder || '' });
         input.value = f.value || '';
         inputs[f.key] = input;
         wrap.append(el('div', {}, [el('label', { class: 'label', for: id, text: f.label }), input]));
