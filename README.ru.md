@@ -36,9 +36,9 @@
 Готовые сборки — на странице [Releases](../../releases/latest). Для Windows
 10/11 (64 бита) достаточно одного файла на выбор:
 
-- [Journeyman-Setup-0.2.0.exe](../../releases/download/v0.2.0/Journeyman-Setup-0.2.0.exe)
+- [Journeyman.Setup.0.2.0.exe](../../releases/download/v0.2.0/Journeyman.Setup.0.2.0.exe)
   — установщик с ярлыком в «Пуске» и на рабочем столе;
-- [Journeyman-Portable-0.2.0.exe](../../releases/download/v0.2.0/Journeyman-Portable-0.2.0.exe)
+- [Journeyman.0.2.0.exe](../../releases/download/v0.2.0/Journeyman.0.2.0.exe)
   — без установки, запускается прямо из файла.
 
 Установщик неподписанный, поэтому при первом запуске Windows покажет окно

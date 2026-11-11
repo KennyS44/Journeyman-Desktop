@@ -32,8 +32,8 @@ const MENU = (() => {
   const isDesktop = !!window.journeyman;
   const RELEASES = 'https://github.com/KennyS44/Journeyman-Desktop/releases';
   const DESKTOP = {
-    setup:    { file: 'Journeyman-Setup-0.2.0.exe',    tag: 'v0.2.0', size: '97 МБ' },
-    portable: { file: 'Journeyman-Portable-0.2.0.exe', tag: 'v0.2.0', size: '97 МБ' },
+    setup:    { file: 'Journeyman.Setup.0.2.0.exe',    tag: 'v0.2.0', size: '98 МБ' },
+    portable: { file: 'Journeyman.0.2.0.exe',       tag: 'v0.2.0', size: '98 МБ' },
   };
   const dlUrl = (d) => `${RELEASES}/download/${d.tag}/${d.file}`;
 
