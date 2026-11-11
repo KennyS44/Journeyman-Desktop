@@ -27,6 +27,34 @@ const MENU = (() => {
     ]);
   }
 
+  /* Настольная версия: ссылки на готовые сборки. В самой программе (там есть
+     мост window.journeyman) раздел не нужен — файл при этом остаётся общим. */
+  const isDesktop = !!window.journeyman;
+  const RELEASES = 'https://github.com/KennyS44/Journeyman-Desktop/releases';
+  const DESKTOP = {
+    setup:    { file: 'Journeyman-Setup-0.1.0.exe',    tag: 'v0.1.0', size: '97 МБ' },
+    portable: { file: 'Journeyman-Portable-0.1.0.exe', tag: 'v0.1.0', size: '97 МБ' },
+  };
+  const dlUrl = (d) => `${RELEASES}/download/${d.tag}/${d.file}`;
+
+  function desktopSection() {
+    return el('section', { class: 'backup', id: 'desktop' }, [
+      el('h2', { text: 'Настольная версия' }),
+      el('p', { text: 'Программа для Windows 10 и 11: открывается ярлыком, работает без интернета, '
+        + 'а материалы лежат обычной папкой на диске. Чтобы перенести кодекс, сохраните его в файл '
+        + 'кнопкой выше и загрузите в программе.' }),
+      el('div', { class: 'backup-actions' }, [
+        el('a', { class: 'btn btn-primary', href: dlUrl(DESKTOP.setup), download: '' },
+          [icon('download', 18), el('span', { text: `Скачать установщик · ${DESKTOP.setup.size}` })]),
+        el('a', { class: 'btn', href: dlUrl(DESKTOP.portable), download: '' },
+          [icon('download', 18), el('span', { text: 'Без установки' })]),
+      ]),
+      el('p', { class: 'desktop-note', text: 'При первом запуске Windows может предупредить о неизвестном издателе: '
+        + 'нажмите «Подробнее» → «Выполнить в любом случае».' }),
+      el('a', { class: 'desktop-more', href: RELEASES, target: '_blank', rel: 'noopener', text: 'Все версии и сборка для Linux' }),
+    ]);
+  }
+
   async function render() {
     document.title = 'Journeyman — кодекс мастера';
     const spaces = await DB.listSpaces();
@@ -74,7 +102,13 @@ const MENU = (() => {
       topbar({
         title: 'Journeyman',
         sub: 'кодекс мастера',
-        actions: [el('button', { class: 'btn btn-primary', onclick: newSpace }, [icon('plus'), el('span', { text: 'Пространство' })])],
+        actions: [
+          isDesktop ? null : el('button', {
+            class: 'btn btn-ghost', title: 'Скачать программу для Windows',
+            onclick: () => document.getElementById('desktop')?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+          }, [icon('download'), el('span', { class: 'lbl', text: 'Для Windows' })]),
+          el('button', { class: 'btn btn-primary', onclick: newSpace }, [icon('plus'), el('span', { text: 'Пространство' })]),
+        ],
       }),
       el('main', { class: 'menu-wrap' }, [
         el('section', { class: 'hero' }, [
@@ -91,6 +125,7 @@ const MENU = (() => {
           : null,
         grid,
         backupSection(spaces.length > 0),
+        isDesktop ? null : desktopSection(),
       ]),
     );
   }

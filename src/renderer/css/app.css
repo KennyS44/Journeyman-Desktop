@@ -293,6 +293,9 @@ textarea.field { resize: vertical; }
 }
 .backup p { margin: 0; max-width: 66ch; color: var(--ink-dim); }
 .backup-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+a.btn { text-decoration: none; }
+.backup .desktop-note { margin-top: 16px; font-size: 14px; }
+.desktop-more { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; }
 
 /* ==========================================================================
    Экран: пространство (холст)
@@ -1059,6 +1062,7 @@ textarea.field { resize: vertical; }
 @media (max-width: 600px) {
   .topbar { padding: 8px 12px; gap: 8px; }
   .topbar-title { font-size: 16px; }
+  .topbar .lbl { display: none; }
   .menu-wrap { padding: 16px 16px 32px; }
   .hero { padding: 32px 8px 24px; }
   .hero h1 { font-size: 24px; }

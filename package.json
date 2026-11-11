@@ -1,7 +1,7 @@
 {
   "name": "journeyman-desktop",
   "productName": "Journeyman",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Кодекс мастера настольных ролевых игр — настольная программа, работает без интернета и без браузера",
   "author": "KennyS44",
   "license": "MIT",

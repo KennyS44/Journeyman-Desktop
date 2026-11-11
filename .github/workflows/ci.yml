@@ -3,6 +3,7 @@ name: Проверки и сборка
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -96,3 +97,33 @@ jobs:
           name: journeyman-${{ matrix.label }}
           path: ${{ matrix.artifacts }}
           if-no-files-found: error
+
+  # Метка v* — значит, это выпуск: собранные файлы уходят на страницу Releases.
+  release:
+    name: Выпуск
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: journeyman-*
+          path: out
+          merge-multiple: true
+      - name: Опубликовать
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ls -la out
+          printf '%s\n' \
+            'Что нового:' '' \
+            '- **Перенос материалов из веб-версии** — файл `.jm.zip`: «Файл → Загрузить кодекс из файла…» (Ctrl+O), сохранение — Ctrl+S.' \
+            '- **Классы объектов** — страна, город, место, персонаж, фракция, заметка.' \
+            '- **Карта под холстом** — десять биомов; карта хранится и не меняется при перемещении карточек, границы и берега правятся кистью.' \
+            '- **Громкость** одна на всю программу и запоминается.' '' \
+            'Для Windows 10/11 достаточно одного файла: `Journeyman-Setup-*.exe` (установщик) или `Journeyman-Portable-*.exe` (без установки). Установщик не подписан: при первом запуске «Подробнее» → «Выполнить в любом случае».' \
+            > notes.md
+          gh release create "$GITHUB_REF_NAME" out/*.exe out/*.AppImage \
+            --repo "$GITHUB_REPOSITORY" --title "Journeyman $GITHUB_REF_NAME" --notes-file notes.md

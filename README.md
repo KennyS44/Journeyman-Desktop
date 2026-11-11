@@ -37,9 +37,9 @@ What is new in the desktop edition:
 Prebuilt binaries live on the [Releases](../../releases/latest) page. On Windows
 10/11 (64-bit) a single file is all you need — take your pick:
 
-- [Journeyman-Setup-0.1.0.exe](../../releases/download/v0.1.0/Journeyman-Setup-0.1.0.exe)
+- [Journeyman-Setup-0.2.0.exe](../../releases/download/v0.2.0/Journeyman-Setup-0.2.0.exe)
   — an installer that adds shortcuts to the Start menu and the desktop;
-- [Journeyman-Portable-0.1.0.exe](../../releases/download/v0.1.0/Journeyman-Portable-0.1.0.exe)
+- [Journeyman-Portable-0.2.0.exe](../../releases/download/v0.2.0/Journeyman-Portable-0.2.0.exe)
   — no installation, runs straight from the file.
 
 The installer is unsigned, so on first launch Windows will show the "Windows
